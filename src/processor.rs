@@ -1,23 +1,62 @@
 //! Program state processor
 
-use crate::{error::ProgramTemplateError, instruction::TemplateInstruction};
+use std::{borrow::BorrowMut, convert::TryFrom};
+use num_traits::{AsPrimitive, FromPrimitive, Num};
+use rkyv::{AlignedVec, Deserialize, archived_value, de::deserializers::AllocDeserializer, ser::{Serializer, serializers::WriteSerializer}};
+use crate::{error::ProgramTemplateError, instruction::TemplateInstruction, state::UniswapV3Input, state::{UniswapV3State, ArchivedUniswapV3State}};
 use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, msg,
-    pubkey::Pubkey,
-};
+use solana_program::{account_info::AccountInfo, account_info::next_account_info, entrypoint::ProgramResult, msg, program_error::ProgramError, pubkey::Pubkey};
 
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
     /// Initialize the pool
-    pub fn process_example_instruction(
+    pub fn init_with_borsh(
         _program_id: &Pubkey,
-        accounts: &[AccountInfo],
+        uniswap_account: &AccountInfo,
+        uniswap: &UniswapV3Input,
     ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let _example_account_info = next_account_info(account_info_iter)?;
+        msg!("BORSH Got the state {}", uniswap.state[13].state[13].state[13]);
+        
+        overflow_it(uniswap_account)?;
 
+        Ok(())
+    }
+
+    pub fn init_with_rkyv(
+        _program_id: &Pubkey,
+        uniswap_account: &AccountInfo,
+        uniswap: &UniswapV3Input,
+    ) -> ProgramResult {
+        msg!("RKYV Got the state {}", uniswap.state[13].state[13].state[13]);
+        
+        let data =  uniswap_account.data.try_borrow_mut().unwrap();
+        let mut state = &data[1..];
+        
+        let ser: u128 = 42;
+        // TODO: have to writ custom Serializer allocator (which "allocates" only into mem)
+        {
+            msg!("RKYV 128");
+            let mut serializer = WriteSerializer::new(AlignedVec::new());
+            // very strange, there is no serialise when slice is used, so cannot serde into slice?.....
+            //let mut serializer = WriteSerializer::new(&mut state);
+            let pos = serializer.serialize_value(&ser)
+            .expect("failed to archive test");
+            let buf = serializer.into_inner().to_vec();
+            let archived = unsafe { archived_value::<u128>(&buf[..], pos) };
+            //let archived = unsafe { archived_value::<u128>(state, pos) };
+            msg!("RKYV 128 {}", archived);
+        }
+        {
+
+            let mut pull = vec![0u8;500000];
+            let mut archived:&ArchivedUniswapV3State = unsafe { archived_value::<UniswapV3State>(&pull[..], 0) };            
+            let mut q: &u128 = &archived.state[13].state[13].state[13].state[13];
+
+            //*q = 4;
+        
+        }    // it can non zero copy too!!!
+        //let uniswap: UniswapV3State = archived.deserialize(&mut AllocDeserializer).unwrap();
         Ok(())
     }
 
@@ -26,14 +65,38 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         input: &[u8],
-    ) -> ProgramResult {
-        let instruction = TemplateInstruction::try_from_slice(input)
-            .or(Err(ProgramTemplateError::ExampleError))?;
+    ) -> ProgramResult {        
+        let instruction: TemplateInstruction = num_traits::FromPrimitive::from_u8(input[0]).unwrap();
         match instruction {
-            TemplateInstruction::ExampleInstruction => {
-                msg!("Instruction: ExampleInstruction");
-                Self::process_example_instruction(program_id, accounts)
+            TemplateInstruction::WithBorsh => {
+                msg!("Instruction: WithBorsh");
+                match accounts {
+                    [uniswap_account] => {                        
+                        let mut input = &input[1..];
+                        let uniswap = UniswapV3Input::deserialize(&mut input)?;                        
+                        Self::init_with_borsh(&program_id, &uniswap_account, &uniswap)
+                    },
+                    _ => Err(ProgramError::NotEnoughAccountKeys),
+                }                
             }
+            TemplateInstruction::WithRkyv => {
+                msg!("Instruction: WithRkyv");
+                match accounts {
+                    [uniswap_account] => {                        
+                        let mut input = &input[1..];
+                        let uniswap = UniswapV3Input::deserialize(&mut input)?;                        
+                        Self::init_with_rkyv(&program_id, &uniswap_account, &uniswap)
+                    },
+                    _ => Err(ProgramError::NotEnoughAccountKeys),
+                }            }
         }
     }
+}
+
+fn overflow_it(uniswap_account: &AccountInfo) -> Result<(), ProgramError> {
+    let mut data = uniswap_account.try_borrow_mut_data().unwrap();
+    let mut state = &data[1..];
+    let uniswap:u128 = BorshDeserialize::deserialize(&mut state)?;
+    //let uniswap = UniswapV3State::deserialize(&mut state)?;
+    Ok(())
 }

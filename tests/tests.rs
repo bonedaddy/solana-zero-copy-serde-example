@@ -1,17 +1,17 @@
-#![cfg(feature = "test-bpf")]
+//#![cfg(feature = "test-bpf")]
 
-use solana_program::pubkey::Pubkey;
+use solana_program::{pubkey::Pubkey, system_instruction};
 use solana_program_test::*;
 use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
-use solana_program_template::*;
+use solana_program_template::{self, instruction, processor, state::{UniswapV3Input, UniswapV3State}};
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
         "solana-program-template",
-        id(),
+        solana_program_template::id(),
         processor!(processor::Processor::process_instruction),
     )
 }
@@ -19,14 +19,24 @@ pub fn program_test() -> ProgramTest {
 #[tokio::test]
 async fn test_call_example_instruction() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-
-    let new_acc = Keypair::new();
-
+    let account = Keypair::new();
+    let rent = banks_client.get_rent().await.unwrap();
+    let rent = rent.minimum_balance(1 + UniswapV3State::LEN * 5);
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::init_pool(&id(), &new_acc.pubkey()).unwrap()],
+        
+        &[system_instruction::create_account(
+            &payer.pubkey(),
+            &account.pubkey(),
+            rent,
+            (UniswapV3State::LEN as u64) * 5,
+            &solana_program_template::id(),
+        
+        ),
+        instruction::init_rkyv(&solana_program_template::id(), &account.pubkey()).unwrap(),
+        instruction::init_borsh(&solana_program_template::id(), &account.pubkey()).unwrap()],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(&[&payer], recent_blockhash);
+    transaction.sign(&[&payer, &account], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }

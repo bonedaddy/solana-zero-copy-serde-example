@@ -1,4 +1,4 @@
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 //! A minimal Solana program template
 
@@ -17,4 +17,4 @@ pub mod entrypoint;
 pub use solana_program;
 
 // FIXME: change this address before run tests/program
-solana_program::declare_id!("11111111111111111111111111111111");
+solana_program::declare_id!("BDhwBerjCPBbT6NpcwwQ4m923JCB56vC1fauSxfdhYHy");
