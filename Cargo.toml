@@ -14,7 +14,8 @@ num_enum = "0.5.1"
 solana-program = "1.5.14"
 thiserror = "1.0"
 borsh = "0.8.2"
-rkyv = "0.4.3"
+rkyv = { version = "0.4.3", features = ["validation"] }
+bytecheck = "0.4.1"
 
 [dev-dependencies]
 solana-program-test = "1.5.14"

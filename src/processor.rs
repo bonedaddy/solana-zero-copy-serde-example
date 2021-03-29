@@ -2,8 +2,8 @@
 
 use std::{borrow::BorrowMut, convert::TryFrom};
 use num_traits::{AsPrimitive, FromPrimitive, Num};
-use rkyv::{AlignedVec, Deserialize, archived_value, de::deserializers::AllocDeserializer, ser::{Serializer, serializers::WriteSerializer}};
-use crate::{error::ProgramTemplateError, instruction::TemplateInstruction, state::UniswapV3Input, state::{UniswapV3State, ArchivedUniswapV3State}};
+use rkyv::{AlignedVec, Deserialize, archived_value,archived_unsized_value,  check_archive, de::deserializers::AllocDeserializer, ser::{Serializer, serializers::WriteSerializer}};
+use crate::{error::ProgramTemplateError, instruction::TemplateInstruction, state::UniswapV3Input, state::{UniswapV3State, ArchivedUniswapV3State, ArchivedUniswapV3Input, Internal, Test}};
 use borsh::BorshDeserialize;
 use solana_program::{account_info::AccountInfo, account_info::next_account_info, entrypoint::ProgramResult, msg, program_error::ProgramError, pubkey::Pubkey};
 
@@ -31,26 +31,32 @@ impl Processor {
         msg!("RKYV Got the state {}", uniswap.state[13].state[13].state[13]);
         
         let data =  uniswap_account.data.try_borrow_mut().unwrap();
-        let mut state = &data[1..];
+        let mut state = &data[8..];
         
         let ser: u128 = 42;
         // TODO: have to writ custom Serializer allocator (which "allocates" only into mem)
         {
-            msg!("RKYV 128");
-            let mut serializer = WriteSerializer::new(AlignedVec::new());
+            //msg!("RKYV 128");
+            //let mut serializer = WriteSerializer::new(AlignedVec::new());
             // very strange, there is no serialise when slice is used, so cannot serde into slice?.....
             //let mut serializer = WriteSerializer::new(&mut state);
-            let pos = serializer.serialize_value(&ser)
-            .expect("failed to archive test");
-            let buf = serializer.into_inner().to_vec();
-            let archived = unsafe { archived_value::<u128>(&buf[..], pos) };
+            //let pos = serializer.serialize_value(&ser)
+                //.expect("failed to archive test");
+            //let buf = serializer.into_inner().to_vec();
+            //let archived = unsafe { archived_value::<u128>(&buf[..], pos) };
             //let archived = unsafe { archived_value::<u128>(state, pos) };
-            msg!("RKYV 128 {}", archived);
+            //msg!("RKYV 128 {}", archived);
         }
         {
 
             let mut pull = vec![0u8;500000];
-            let mut archived:&ArchivedUniswapV3State = unsafe { archived_value::<UniswapV3State>(&pull[..], 0) };            
+            assert!(state.len() > pull.len());
+            assert!(state[42] == 0);
+            msg!("serde");
+            assert!(check_archive::<Test>(&state[..],0).err().is_none());
+            //let err = check_archive::<Test>(&pull[..],0).err();
+             //msg!("{}",  err.to_string());
+            let mut archived = unsafe { archived_unsized_value::<UniswapV3State>(&state, 0) };            
             let mut q: &u128 = &archived.state[13].state[13].state[13].state[13];
 
             //*q = 4;

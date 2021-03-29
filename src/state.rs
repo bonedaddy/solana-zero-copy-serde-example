@@ -1,13 +1,24 @@
 //! State transition types
 use borsh::{BorshDeserialize, BorshSerialize};
 use rkyv::{Archive, Serialize, Deserialize};
+use bytecheck::CheckBytes;
 
 // poor man way to generate fat struc (where is my macro?)
 #[derive(BorshDeserialize, BorshSerialize,Archive, Clone, Copy, Default, Serialize, Deserialize)]
+#[archive(derive(CheckBytes))]
+#[repr(C)]
 pub struct Internal{
     pub state: [u128; 15],
 }
 
+
+#[derive(BorshDeserialize, BorshSerialize,Archive, Clone, Copy, Default, Serialize, Deserialize)]
+#[archive(derive(CheckBytes))]
+#[repr(C)]
+pub struct Test{
+    pub state1: u128,
+    pub state2: u128,
+}
 
 #[derive(BorshDeserialize, BorshSerialize,Archive, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Internal2{
