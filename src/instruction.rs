@@ -3,14 +3,9 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use rkyv::{
     de::deserializers::AllocDeserializer,
-    ser::{Serializer, serializers::WriteSerializer},
-    AlignedVec,
-    Archive,
-    Archived,
-    Deserialize,
-    Serialize,
+    ser::{serializers::WriteSerializer, Serializer},
+    AlignedVec, Archive, Archived, Deserialize, Serialize,
 };
-
 
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -29,11 +24,14 @@ pub enum TemplateInstruction {
     ///
     ///   0. `[w]` Example account.
     WithBorsh,
-    
+
     /// Example.
     ///
     ///   0. `[w]` Example account.
     WithRkyv,
+
+    /// Reads data previously save by rkyv
+    ReadRkyv,
 }
 
 /// Create `Example` instruction
@@ -42,7 +40,7 @@ pub fn init_borsh(
     example_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let op = num_traits::ToPrimitive::to_u8(&TemplateInstruction::WithBorsh).unwrap();
-    let mut data:Vec<u8> = Vec::with_capacity(1+UniswapV3Input::LEN);
+    let mut data: Vec<u8> = Vec::with_capacity(1 + UniswapV3Input::LEN);
     data.push(op);
     let mut state = UniswapV3Input::new().try_to_vec()?;
     data.append(&mut state);
@@ -51,18 +49,39 @@ pub fn init_borsh(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data 
+        data,
     })
 }
 
+pub fn read_rkyv(
+    program_id: &Pubkey,
+    example_account: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let op = num_traits::ToPrimitive::to_u8(&TemplateInstruction::ReadRkyv).unwrap();
+    let accounts = vec![AccountMeta::new_readonly(*example_account, false)];
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data: vec![op],
+    })
+}
 
 pub fn init_rkyv(
     program_id: &Pubkey,
     example_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let op = num_traits::ToPrimitive::to_u8(&TemplateInstruction::WithRkyv).unwrap();
-    let mut data:Vec<u8> = Vec::with_capacity(1+UniswapV3Input::LEN);
+    let mut data: Vec<u8> = Vec::with_capacity(8 + UniswapV3Input::LEN);
+
     data.push(op);
+    // rkyv requires 8 byte alignments ...
+    data.push(0);
+    data.push(0);
+    data.push(0);
+    data.push(0);
+    data.push(0);
+    data.push(0);
+    data.push(0);
     let mut ser = WriteSerializer::new(AlignedVec::new());
     ser.serialize_value(&UniswapV3Input::new()).unwrap();
     let mut state = ser.into_inner().to_vec();
@@ -72,6 +91,6 @@ pub fn init_rkyv(
     Ok(Instruction {
         program_id: *program_id,
         accounts,
-        data 
+        data,
     })
 }
