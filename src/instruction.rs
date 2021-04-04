@@ -2,9 +2,8 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use rkyv::{
-    de::deserializers::AllocDeserializer,
     ser::{serializers::WriteSerializer, Serializer},
-    AlignedVec, Archive, Archived, Deserialize, Serialize,
+    AlignedVec,
 };
 
 use solana_program::{

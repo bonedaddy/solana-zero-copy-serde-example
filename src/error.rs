@@ -12,9 +12,9 @@ use thiserror::Error;
 /// Errors that may be returned by the Template program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum ProgramTemplateError {
-    /// Example error
-    #[error("Example error")]
-    ExampleError,
+    /// Rkyv IO
+    #[error("Rkyv IO")]
+    RkyvIo,
 }
 impl From<ProgramTemplateError> for ProgramError {
     fn from(e: ProgramTemplateError) -> Self {
@@ -33,7 +33,7 @@ impl PrintProgramError for ProgramTemplateError {
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
         match self {
-            ProgramTemplateError::ExampleError => msg!("Example error message"),
+            ProgramTemplateError::RkyvIo => msg!("Rkyv IO message"),
         }
     }
 }

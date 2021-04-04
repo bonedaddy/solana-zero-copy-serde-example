@@ -1,10 +1,7 @@
 //#![cfg(feature = "test-bpf")]
 
 use solana_program::{pubkey::Pubkey, system_instruction};
-use solana_program_template::{
-    self, instruction, processor,
-    state::{UniswapV3Input, UniswapV3State},
-};
+use solana_program_template::{self, instruction, processor, state::UniswapV3State};
 use solana_program_test::*;
 use solana_sdk::{
     signature::{Keypair, Signer},

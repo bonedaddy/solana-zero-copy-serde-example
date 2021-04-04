@@ -1,24 +1,17 @@
 //! Program state processor
 
 use crate::{
-    error::ProgramTemplateError,
     instruction::TemplateInstruction,
     state::UniswapV3Input,
-    state::{ArchivedUniswapV3Input, ArchivedUniswapV3State, Layer1, UniswapV3State},
+    state::{ArchivedUniswapV3Input, UniswapV3State},
 };
 use borsh::BorshDeserialize;
-use num_traits::{AsPrimitive, FromPrimitive, Num};
-use rkyv::{
-    archived_unsized_value, archived_unsized_value_mut, archived_value, check_archive,
-    de::deserializers::AllocDeserializer,
-    ser::{serializers::WriteSerializer, Serializer},
-    AlignedVec, Deserialize,
-};
+use rkyv::{archived_unsized_value, archived_unsized_value_mut, check_archive};
 use solana_program::{
-    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, msg,
-    program_error::ProgramError, pubkey::Pubkey,
+    account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
+    pubkey::Pubkey,
 };
-use std::{borrow::BorrowMut, convert::TryFrom, pin::Pin};
+use std::pin::Pin;
 
 /// Program state handler.
 pub struct Processor {}
@@ -27,7 +20,7 @@ impl Processor {
     pub fn init_with_borsh(
         _program_id: &Pubkey,
         uniswap_account: &AccountInfo,
-        uniswap: &UniswapV3Input,
+        _uniswap: &UniswapV3Input,
     ) -> ProgramResult {
         overflow_it(uniswap_account)?;
 
@@ -37,19 +30,15 @@ impl Processor {
     pub fn init_with_rkyv(
         _program_id: &Pubkey,
         uniswap_account: &AccountInfo,
-        uniswap: &ArchivedUniswapV3Input,
+        _uniswap: &ArchivedUniswapV3Input,
     ) -> ProgramResult {
-        // msg!(
-        //     "rkyv Got the state {}",
-        //     uniswap.state[13].state[13].state[13]
-        // );
-        // no_overflow_rkyv(uniswap_account);
+        no_overflow_rkyv(uniswap_account);
         Ok(())
     }
 
     pub fn read_with_rkyv(_program_id: &Pubkey, uniswap_account: &AccountInfo) -> ProgramResult {
         let data = uniswap_account.data.try_borrow().unwrap();
-        let state = &data[..];
+        let state = &data[8..];
         let archived = unsafe { archived_unsized_value::<UniswapV3State>(state, 0) };
         let state = &archived.state[13].state[13].state[13].state[13];
         msg!("rkyv Got the state {}", state);
@@ -81,7 +70,7 @@ impl Processor {
                 msg!("Instruction: WithRkyv");
                 match accounts {
                     [uniswap_account] => {
-                        let mut input = &input[8..];
+                        let input = &input[8..];
                         let uniswap = check_archive::<UniswapV3Input>(&input[..], 0);
                         match uniswap {
                             Ok(uniswap) => {
@@ -110,7 +99,7 @@ impl Processor {
 fn no_overflow_rkyv(uniswap_account: &AccountInfo) {
     // can wrap it into some less verbose pattern with check_archive call
     let mut data = uniswap_account.data.try_borrow_mut().unwrap();
-    let mut state = &mut data[8..];
+    let state = &mut data[8..];
     let pin = Pin::new(state);
     let mut archived = unsafe { archived_unsized_value_mut::<UniswapV3State>(pin, 0) };
     let mut layer = &mut archived.state[13].state[13].state[13];
@@ -118,8 +107,8 @@ fn no_overflow_rkyv(uniswap_account: &AccountInfo) {
 }
 
 fn overflow_it(uniswap_account: &AccountInfo) -> Result<(), ProgramError> {
-    let mut data = uniswap_account.try_borrow_mut_data().unwrap();
+    let data = uniswap_account.try_borrow_mut_data().unwrap();
     let mut state = &data[1..];
-    let uniswap: UniswapV3State = BorshDeserialize::deserialize(&mut state)?;
+    let _uniswap: UniswapV3State = BorshDeserialize::deserialize(&mut state)?;
     Ok(())
 }

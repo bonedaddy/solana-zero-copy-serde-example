@@ -60,17 +60,11 @@ impl UniswapV3Input {
 #[cfg(test)]
 mod tests {
     use crate::state::*;
-    use borsh::{BorshDeserialize, BorshSerialize};
-    use rkyv::{
-        archived_value,
-        de::deserializers::AllocDeserializer,
-        ser::{serializers::WriteSerializer, Serializer},
-        AlignedVec, Archive, Archived, Deserialize, Serialize,
-    };
+    use rkyv::archived_value;
 
     #[test]
     fn do_test() {
-        let mut pull = vec![0u8; 500000];
-        let archived = unsafe { archived_value::<UniswapV3State>(&pull[..], 0) };
+        let pull = vec![0u8; 500000];
+        let _archived = unsafe { archived_value::<UniswapV3State>(&pull[..], 0) };
     }
 }
